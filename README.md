@@ -116,3 +116,9 @@ Response bodies and transient UI errors are not persisted in saved tabs.
 ## Engineering Docs
 
 - Engineering overview: [overview.md](./overview.md)
+
+## Screenshots
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/e74f8546-c44d-4cd7-aa50-3de5b2991dbd" width="48%" />
+  <img src="https://github.com/user-attachments/assets/6600d164-408c-43d8-9c19-10889c0fa662" width="48%" />
+</p>
