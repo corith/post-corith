@@ -1,0 +1,182 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ───── Light mode base tokens ───── */
+:root {
+  /* Surface */
+  --surface-50: #f8f9fb;
+  --surface-100: #f0f2f5;
+  --surface-200: #e4e8ee;
+  --surface-300: #d1d8e0;
+  --surface-400: #b0bac8;
+  --card: #ffffff;
+
+  /* Ink */
+  --ink: #1e293b;
+  --ink-light: #475569;
+  --ink-muted: #94a3b8;
+  --ink-faint: #cbd5e1;
+
+  /* Semantic bg */
+  --danger-bg: #fef2f2;
+  --warning-bg: #fffbeb;
+  --success-bg: #ecfdf5;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 6px 16px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.04);
+  --shadow-card-hover: 0 2px 6px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.08), 0 16px 40px rgba(0,0,0,0.06);
+  --shadow-raised: 0 1px 2px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.06);
+  --shadow-inset: inset 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-btn: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-btn-hover: 0 4px 12px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08);
+  --shadow-btn-active: inset 0 2px 4px rgba(0,0,0,0.12);
+
+  color: var(--ink);
+  background-color: var(--surface-100);
+  font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ───── Dark mode tokens ───── */
+.dark {
+  --surface-50: #1e293b;
+  --surface-100: #0f172a;
+  --surface-200: #1e293b;
+  --surface-300: #334155;
+  --surface-400: #475569;
+  --card: #1e293b;
+
+  --ink: #f1f5f9;
+  --ink-light: #cbd5e1;
+  --ink-muted: #94a3b8;
+  --ink-faint: #64748b;
+
+  --danger-bg: rgba(239,68,68,0.1);
+  --warning-bg: rgba(245,158,11,0.1);
+  --success-bg: rgba(16,185,129,0.1);
+
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.2), 0 6px 16px rgba(0,0,0,0.2), 0 12px 32px rgba(0,0,0,0.15);
+  --shadow-card-hover: 0 2px 6px rgba(0,0,0,0.25), 0 8px 24px rgba(0,0,0,0.25), 0 16px 40px rgba(0,0,0,0.2);
+  --shadow-raised: 0 1px 2px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.15);
+  --shadow-inset: inset 0 2px 4px rgba(0,0,0,0.2);
+  --shadow-btn: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-btn-hover: 0 4px 12px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.25);
+  --shadow-btn-active: inset 0 2px 4px rgba(0,0,0,0.35);
+
+  color: var(--ink);
+  background-color: var(--surface-100);
+}
+
+/* ───── Accent color themes ───── */
+/* Default: International Orange */
+:root,
+[data-theme="orange"] {
+  --accent: #FF4F00;
+  --accent-light: #FF6A2A;
+  --accent-dark: #D94400;
+  --accent-glow: rgba(255,79,0,0.15);
+}
+
+[data-theme="purple"] {
+  --accent: #7C3AED;
+  --accent-light: #8B5CF6;
+  --accent-dark: #6D28D9;
+  --accent-glow: rgba(124,58,237,0.15);
+}
+
+[data-theme="teal"] {
+  --accent: #0D9488;
+  --accent-light: #14B8A6;
+  --accent-dark: #0F766E;
+  --accent-glow: rgba(13,148,136,0.15);
+}
+
+[data-theme="red"] {
+  --accent: #DC2626;
+  --accent-light: #EF4444;
+  --accent-dark: #B91C1C;
+  --accent-glow: rgba(220,38,38,0.15);
+}
+
+[data-theme="gray"] {
+  --accent: #6B7280;
+  --accent-light: #9CA3AF;
+  --accent-dark: #4B5563;
+  --accent-glow: rgba(107,114,128,0.15);
+}
+
+/* ───── Base resets ───── */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--surface-100);
+  color: var(--ink);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+/* Skeuomorphic inset inputs */
+input[type="text"],
+input[type="number"],
+textarea,
+select {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow), inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* Smooth transitions for interactive elements */
+button {
+  transition: all 0.15s ease;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ink-faint);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-muted);
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+  accent-color: var(--accent);
+}
