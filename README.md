@@ -2,6 +2,11 @@
 
 A lightweight Postman-style HTTP client for development workflows.
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/71cb65bb-e8cc-492e-9ac3-1666e4991080" width="400" />
+</p>
+
+
 ## Stack
 - React + Vite + Tailwind frontend
 - Node.js + Express proxy backend (`/api/request`) to avoid browser CORS limits
