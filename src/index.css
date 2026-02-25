@@ -35,7 +35,7 @@
   --shadow-btn-active: inset 0 2px 4px rgba(0,0,0,0.12);
 
   color: var(--ink);
-  background-color: var(--surface-100);
+  background-color: var(--accent);
   font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -43,29 +43,29 @@
 
 /* ───── Dark mode tokens ───── */
 .dark {
-  --surface-50: #1e293b;
-  --surface-100: #0f172a;
-  --surface-200: #1e293b;
-  --surface-300: #334155;
-  --surface-400: #475569;
-  --card: #1e293b;
+  --surface-50: #151515;
+  --surface-100: #0a0a0a;
+  --surface-200: #171717;
+  --surface-300: #2a2a2a;
+  --surface-400: #424242;
+  --card: #121212;
 
-  --ink: #f1f5f9;
-  --ink-light: #cbd5e1;
-  --ink-muted: #94a3b8;
-  --ink-faint: #64748b;
+  --ink: #f5f5f5;
+  --ink-light: #d4d4d4;
+  --ink-muted: #a3a3a3;
+  --ink-faint: #5c5c5c;
 
   --danger-bg: rgba(239,68,68,0.1);
   --warning-bg: rgba(245,158,11,0.1);
   --success-bg: rgba(16,185,129,0.1);
 
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.2), 0 6px 16px rgba(0,0,0,0.2), 0 12px 32px rgba(0,0,0,0.15);
-  --shadow-card-hover: 0 2px 6px rgba(0,0,0,0.25), 0 8px 24px rgba(0,0,0,0.25), 0 16px 40px rgba(0,0,0,0.2);
-  --shadow-raised: 0 1px 2px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.15);
-  --shadow-inset: inset 0 2px 4px rgba(0,0,0,0.2);
-  --shadow-btn: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
-  --shadow-btn-hover: 0 4px 12px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.25);
-  --shadow-btn-active: inset 0 2px 4px rgba(0,0,0,0.35);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.45), 0 8px 24px rgba(0,0,0,0.35), 0 18px 44px rgba(0,0,0,0.28);
+  --shadow-card-hover: 0 2px 6px rgba(0,0,0,0.5), 0 10px 28px rgba(0,0,0,0.4), 0 20px 52px rgba(0,0,0,0.32);
+  --shadow-raised: 0 1px 2px rgba(0,0,0,0.35), 0 6px 16px rgba(0,0,0,0.28);
+  --shadow-inset: inset 0 2px 4px rgba(0,0,0,0.35);
+  --shadow-btn: 0 1px 3px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35);
+  --shadow-btn-hover: 0 4px 12px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.4);
+  --shadow-btn-active: inset 0 2px 4px rgba(0,0,0,0.45);
 
   color: var(--ink);
   background-color: var(--surface-100);
@@ -76,35 +76,35 @@
 :root,
 [data-theme="orange"] {
   --accent: #FF4F00;
-  --accent-light: #FF6A2A;
+  --accent-light: #FF9A70;
   --accent-dark: #D94400;
   --accent-glow: rgba(255,79,0,0.15);
 }
 
 [data-theme="purple"] {
   --accent: #7C3AED;
-  --accent-light: #8B5CF6;
+  --accent-light: #C4B5FD;
   --accent-dark: #6D28D9;
   --accent-glow: rgba(124,58,237,0.15);
 }
 
 [data-theme="teal"] {
   --accent: #0D9488;
-  --accent-light: #14B8A6;
+  --accent-light: #5EEAD4;
   --accent-dark: #0F766E;
   --accent-glow: rgba(13,148,136,0.15);
 }
 
 [data-theme="red"] {
   --accent: #DC2626;
-  --accent-light: #EF4444;
+  --accent-light: #FCA5A5;
   --accent-dark: #B91C1C;
   --accent-glow: rgba(220,38,38,0.15);
 }
 
 [data-theme="gray"] {
   --accent: #6B7280;
-  --accent-light: #9CA3AF;
+  --accent-light: #D1D5DB;
   --accent-dark: #4B5563;
   --accent-glow: rgba(107,114,128,0.15);
 }
@@ -117,9 +117,14 @@
 body {
   margin: 0;
   min-width: 320px;
-  background: var(--surface-100);
+  background: var(--accent);
   color: var(--ink);
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+#root {
+  min-height: 100vh;
+  background: var(--surface-100);
 }
 
 input,
@@ -179,4 +184,76 @@ button {
 /* Checkbox styling */
 input[type="checkbox"] {
   accent-color: var(--accent);
+}
+
+.json-body-editor-shell {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.json-body-editor-shell:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow), inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.json-body-editor-shell-invalid {
+  border-color: #fca5a5;
+}
+
+.json-body-editor-shell-invalid:focus-within {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.json-body-editor-overlay {
+  pointer-events: none;
+  color: var(--ink);
+}
+
+.json-body-editor-overlay pre,
+.json-body-editor-input {
+  tab-size: 2;
+}
+
+.json-body-editor-input {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  outline: 0;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: var(--ink);
+}
+
+.json-body-editor-input:focus {
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.json-body-editor-input::selection {
+  background: var(--accent-glow);
+}
+
+.json-body-editor-input::placeholder {
+  color: var(--ink-muted);
+  -webkit-text-fill-color: var(--ink-muted);
+}
+
+.json-token-key,
+.json-token-punct {
+  color: var(--accent);
+}
+
+.json-token-string {
+  color: var(--accent-light);
+}
+
+.json-token-number,
+.json-token-literal {
+  color: var(--accent-dark);
+  font-weight: 500;
+}
+
+.dark .json-token-number,
+.dark .json-token-literal {
+  color: var(--accent-light);
 }

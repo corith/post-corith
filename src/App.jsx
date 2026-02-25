@@ -180,6 +180,10 @@ function App() {
   );
 
   const canSendBody = !METHODS_WITHOUT_BODY.has(activeTab.method);
+  const jsonBodyValidation = useMemo(
+    () => (activeTab.bodyMode === "json" ? validateJsonDraft(activeTab.bodyText) : null),
+    [activeTab.bodyMode, activeTab.bodyText]
+  );
 
   /* ───── Effects ───── */
   useEffect(() => {
@@ -199,6 +203,9 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem("post-corith-theme", theme);
+    document.documentElement.setAttribute("data-theme", theme);
+    const swatch = THEME_COLORS.find((c) => c.id === theme)?.swatch;
+    if (swatch) document.documentElement.style.backgroundColor = swatch;
   }, [theme]);
 
   useEffect(() => {
@@ -322,10 +329,9 @@ function App() {
       if (tab.bodyMode === "json") {
         const candidate = tab.bodyText.trim();
         if (candidate) {
-          try {
-            JSON.parse(candidate);
-          } catch {
-            throw new Error("Body is not valid JSON.");
+          const validation = validateJsonDraft(candidate);
+          if (!validation.isValid) {
+            throw new Error(validation.message || "Body is not valid JSON.");
           }
           body = candidate;
         } else {
@@ -889,13 +895,29 @@ function App() {
                       </div>
                     )}
 
-                    {canSendBody && (activeTab.bodyMode === "json" || activeTab.bodyMode === "raw") && (
+                    {canSendBody && activeTab.bodyMode === "json" && (
+                      <>
+                        <JsonBodyEditor
+                          value={activeTab.bodyText}
+                          onChange={(value) => updateActiveTab("bodyText", value)}
+                          placeholder={'{\n  "name": "Ada"\n}'}
+                          invalid={Boolean(jsonBodyValidation && !jsonBodyValidation.isValid)}
+                        />
+                        {jsonBodyValidation && !jsonBodyValidation.isValid && (
+                          <div className="rounded-lg border border-danger-light bg-danger-bg px-3 py-2 text-xs text-red-700">
+                            {jsonBodyValidation.message}
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {canSendBody && activeTab.bodyMode === "raw" && (
                       <textarea
                         value={activeTab.bodyText}
                         onChange={(e) => updateActiveTab("bodyText", e.target.value)}
                         className="h-52 w-full rounded-lg border border-surface-300 bg-card p-4 font-mono text-sm shadow-inset placeholder:text-ink-muted"
                         spellCheck={false}
-                        placeholder={activeTab.bodyMode === "json" ? '{\n  "name": "Ada"\n}' : "Raw text payload"}
+                        placeholder="Raw text payload"
                       />
                     )}
 
@@ -1363,8 +1385,154 @@ function ResponseBody({ text, search, onSearchChange }) {
   );
 }
 
+function JsonBodyEditor({ value, onChange, placeholder, invalid = false }) {
+  const overlayRef = useRef(null);
+
+  const highlightedHtml = useMemo(() => highlightJsonHtml(value || ""), [value]);
+
+  const syncScroll = (event) => {
+    if (!overlayRef.current) return;
+    overlayRef.current.scrollTop = event.target.scrollTop;
+    overlayRef.current.scrollLeft = event.target.scrollLeft;
+  };
+
+  return (
+    <div className={`json-body-editor-shell relative h-52 w-full overflow-hidden rounded-lg border bg-card shadow-inset ${
+      invalid ? "json-body-editor-shell-invalid border-danger-light" : "border-surface-300"
+    }`}>
+      <div
+        ref={overlayRef}
+        aria-hidden="true"
+        className="json-body-editor-overlay absolute inset-0 h-full overflow-hidden p-4 font-mono text-sm leading-6"
+      >
+        {value ? (
+          <pre
+            className="m-0 whitespace-pre-wrap break-words"
+            dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+          />
+        ) : (
+          <pre className="m-0 whitespace-pre-wrap break-words text-transparent"> </pre>
+        )}
+      </div>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onScroll={syncScroll}
+        className="json-body-editor-input absolute inset-0 h-full w-full resize-none bg-transparent p-4 font-mono text-sm leading-6"
+        spellCheck={false}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
+
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function validateJsonDraft(text) {
+  const source = String(text ?? "");
+  if (!source.trim()) {
+    return { isValid: true, message: "" };
+  }
+
+  try {
+    JSON.parse(source);
+    return { isValid: true, message: "" };
+  } catch (error) {
+    const rawMessage = error instanceof Error && error.message
+      ? error.message
+      : "Body is not valid JSON.";
+    const location = getJsonErrorLocation(source, rawMessage);
+    const locationLabel = location ? ` (line ${location.line}, column ${location.column})` : "";
+    const cleaned = rawMessage.replace(/\s*\(line\s+\d+\s+column\s+\d+\)\s*$/i, "");
+    return {
+      isValid: false,
+      message: `Invalid JSON: ${cleaned}${locationLabel}`,
+      ...location,
+    };
+  }
+}
+
+function getJsonErrorLocation(source, errorMessage) {
+  const lineColMatch = String(errorMessage).match(/\(line\s+(\d+)\s+column\s+(\d+)\)/i);
+  if (lineColMatch) {
+    return {
+      line: Number(lineColMatch[1]),
+      column: Number(lineColMatch[2]),
+    };
+  }
+
+  const positionMatch = String(errorMessage).match(/position\s+(\d+)/i);
+  if (!positionMatch) return null;
+  const position = Number(positionMatch[1]);
+  if (!Number.isFinite(position) || position < 0) return null;
+  return positionToLineColumn(source, position);
+}
+
+function positionToLineColumn(text, position) {
+  const safePosition = Math.min(position, text.length);
+  let line = 1;
+  let column = 1;
+
+  for (let i = 0; i < safePosition; i += 1) {
+    if (text[i] === "\n") {
+      line += 1;
+      column = 1;
+    } else {
+      column += 1;
+    }
+  }
+
+  return { line, column };
+}
+
+const JSON_HIGHLIGHT_TOKEN_REGEX =
+  /("(?:\\.|[^"\\])*")(\s*:)?|\b(?:true|false|null)\b|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}\[\],:]/g;
+
+function highlightJsonHtml(text) {
+  if (!text) return "";
+
+  let html = "";
+  let cursor = 0;
+  let match;
+
+  JSON_HIGHLIGHT_TOKEN_REGEX.lastIndex = 0;
+
+  while ((match = JSON_HIGHLIGHT_TOKEN_REGEX.exec(text)) !== null) {
+    const [token, stringToken, keySuffix = ""] = match;
+    const start = match.index;
+    html += escapeHtml(text.slice(cursor, start));
+
+    if (stringToken) {
+      if (keySuffix) {
+        html += `<span class="json-token-key">${escapeHtml(stringToken)}</span>`;
+        const colonIndex = keySuffix.lastIndexOf(":");
+        html += escapeHtml(keySuffix.slice(0, colonIndex));
+        html += `<span class="json-token-punct">:</span>`;
+      } else {
+        html += `<span class="json-token-string">${escapeHtml(token)}</span>`;
+      }
+    } else if (/^[{}\[\],:]$/.test(token)) {
+      html += `<span class="json-token-punct">${escapeHtml(token)}</span>`;
+    } else if (/^(?:true|false|null)$/.test(token)) {
+      html += `<span class="json-token-literal">${escapeHtml(token)}</span>`;
+    } else {
+      html += `<span class="json-token-number">${escapeHtml(token)}</span>`;
+    }
+
+    cursor = start + token.length;
+  }
+
+  html += escapeHtml(text.slice(cursor));
+  return html;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 function getResponseTextForTab(response, responseTab, prettyResponse) {
