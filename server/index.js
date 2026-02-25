@@ -5,11 +5,63 @@ import { fileURLToPath } from "node:url";
 
 const app = express();
 const port = Number(process.env.PORT || 8787);
+const host = process.env.HOST || "127.0.0.1";
+const maxResponseBytes = Math.min(
+  Math.max(Number(process.env.MAX_RESPONSE_BYTES) || 50 * 1024 * 1024, 64 * 1024),
+  50 * 1024 * 1024
+);
 
 app.use(express.json({ limit: "10mb" }));
 
 const METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
 const BODYLESS_METHODS = new Set(["GET", "HEAD"]);
+
+function makeResponseTooLargeError(limitBytes, actualBytes) {
+  const error = new Error(
+    `Upstream response exceeded ${limitBytes} bytes${actualBytes ? ` (${actualBytes} bytes reported/read)` : ""}.`
+  );
+  error.code = "RESPONSE_TOO_LARGE";
+  error.limitBytes = limitBytes;
+  error.actualBytes = actualBytes;
+  return error;
+}
+
+async function readBodyWithLimit(upstream, limitBytes) {
+  const reportedLength = Number(upstream.headers.get("content-length"));
+  if (Number.isFinite(reportedLength) && reportedLength > limitBytes) {
+    try {
+      await upstream.body?.cancel?.();
+    } catch {
+      /* ignore */
+    }
+    throw makeResponseTooLargeError(limitBytes, reportedLength);
+  }
+
+  if (!upstream.body) {
+    return Buffer.alloc(0);
+  }
+
+  const chunks = [];
+  let total = 0;
+
+  for await (const chunk of upstream.body) {
+    const nextChunk = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += nextChunk.byteLength;
+
+    if (total > limitBytes) {
+      try {
+        await upstream.body.cancel?.();
+      } catch {
+        /* ignore */
+      }
+      throw makeResponseTooLargeError(limitBytes, total);
+    }
+
+    chunks.push(nextChunk);
+  }
+
+  return Buffer.concat(chunks, total);
+}
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "post-corith-proxy" });
@@ -62,7 +114,7 @@ app.post("/api/request", async (req, res) => {
       redirect: "follow"
     });
 
-    const buffer = Buffer.from(await upstream.arrayBuffer());
+    const buffer = await readBodyWithLimit(upstream, maxResponseBytes);
     const responseBody = buffer.toString("utf8");
 
     const responseHeaders = {};
@@ -109,6 +161,14 @@ app.post("/api/request", async (req, res) => {
       return res.status(504).json({ error: `Request timed out after ${timeout}ms.` });
     }
 
+    if (error?.code === "RESPONSE_TOO_LARGE") {
+      return res.status(413).json({
+        error: error.message,
+        limitBytes: error.limitBytes,
+        actualBytes: error.actualBytes ?? null
+      });
+    }
+
     return res.status(502).json({ error: error?.message || "Upstream request failed." });
   } finally {
     clearTimeout(timer);
@@ -129,6 +189,6 @@ if (fs.existsSync(distDir)) {
   });
 }
 
-app.listen(port, () => {
-  console.log(`Post Corith proxy listening on http://localhost:${port}`);
+app.listen(port, host, () => {
+  console.log(`Post Corith proxy listening on http://${host}:${port} (max response ${maxResponseBytes} bytes)`);
 });
