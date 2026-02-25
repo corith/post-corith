@@ -25,8 +25,10 @@ npm run dev
 ```
 
 Frontend: [http://localhost:5173](http://localhost:5173)  
-Proxy backend: [http://localhost:8787/api/health](http://localhost:8787/api/health)
+Proxy backend: [http://127.0.0.1:8787/api/health](http://127.0.0.1:8787/api/health)
 
 ## Notes
 - Requests are executed server-side through the local Node proxy. This allows calling local APIs and network APIs from the UI.
+- The proxy binds to `127.0.0.1` by default (override with `HOST` if you intentionally need remote access).
+- Large upstream responses are capped by `MAX_RESPONSE_BYTES` (default `52428800` / 50 MB) to avoid crashing the app on huge payloads.
 - This tool is focused on request/response iteration only (not test suites, monitors, or collaboration features).

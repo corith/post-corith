@@ -22,6 +22,7 @@ const THEME_COLORS = [
   { id: "red", label: "Red", swatch: "#DC2626" },
   { id: "gray", label: "Gray", swatch: "#6B7280" },
 ];
+const MAX_IMAGE_PREVIEWS = 6;
 
 const makeId = () => {
   if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
@@ -54,6 +55,62 @@ const makeTab = (label = "Request 1") => ({
   responseSearch: "",
   saveFilename: "response.json",
 });
+
+function inferImageMimeTypeFromBase64(base64) {
+  const head = String(base64 || "").slice(0, 32);
+  if (head.startsWith("iVBOR")) return "image/png";
+  if (head.startsWith("/9j/")) return "image/jpeg";
+  if (head.startsWith("R0lGOD")) return "image/gif";
+  if (head.startsWith("UklGR")) return "image/webp";
+  if (head.startsWith("Qk")) return "image/bmp";
+  return "image/png";
+}
+
+function extForMimeType(mimeType) {
+  const normalized = String(mimeType || "").toLowerCase();
+  if (normalized.includes("jpeg") || normalized.includes("jpg")) return "jpg";
+  if (normalized.includes("png")) return "png";
+  if (normalized.includes("gif")) return "gif";
+  if (normalized.includes("webp")) return "webp";
+  if (normalized.includes("bmp")) return "bmp";
+  return "png";
+}
+
+function extractBase64Images(node, path = "$", found = []) {
+  if (!node || found.length >= MAX_IMAGE_PREVIEWS) return found;
+
+  if (Array.isArray(node)) {
+    for (let i = 0; i < node.length && found.length < MAX_IMAGE_PREVIEWS; i += 1) {
+      extractBase64Images(node[i], `${path}[${i}]`, found);
+    }
+    return found;
+  }
+
+  if (typeof node !== "object") return found;
+
+  const maybeB64 = typeof node.b64_json === "string" ? node.b64_json.trim() : "";
+  if (maybeB64) {
+    const explicitMime = typeof node.mime_type === "string"
+      ? node.mime_type
+      : typeof node.mimeType === "string"
+        ? node.mimeType
+        : "";
+    found.push({
+      path: `${path}.b64_json`,
+      base64: maybeB64,
+      mimeType: explicitMime || inferImageMimeTypeFromBase64(maybeB64),
+    });
+    if (found.length >= MAX_IMAGE_PREVIEWS) return found;
+  }
+
+  for (const [key, value] of Object.entries(node)) {
+    if (key === "b64_json") continue;
+    extractBase64Images(value, `${path}.${key}`, found);
+    if (found.length >= MAX_IMAGE_PREVIEWS) break;
+  }
+
+  return found;
+}
 
 function loadInitialTabs() {
   try {
@@ -88,6 +145,7 @@ function App() {
   const [isSending, setIsSending] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportFilename, setExportFilename] = useState("post-corith-export.json");
+  const [copyFeedback, setCopyFeedback] = useState("");
   const importInputRef = useRef(null);
 
   const [theme, setTheme] = useState(() => localStorage.getItem("post-corith-theme") || "orange");
@@ -115,6 +173,11 @@ function App() {
     }
     return activeTab.response.body || "";
   }, [activeTab.response]);
+
+  const responseImagePreviews = useMemo(
+    () => extractBase64Images(activeTab.response?.json),
+    [activeTab.response]
+  );
 
   const canSendBody = !METHODS_WITHOUT_BODY.has(activeTab.method);
 
@@ -447,6 +510,21 @@ function App() {
     };
     reader.readAsText(file);
     e.target.value = "";
+  };
+
+  const handleCopyResponse = async () => {
+    if (!activeTab.response) return;
+    const text = getResponseTextForTab(activeTab.response, responseTab, prettyResponse);
+    if (!text) return;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyFeedback("Copied");
+      window.setTimeout(() => setCopyFeedback(""), 1500);
+    } catch {
+      setCopyFeedback("Copy failed");
+      window.setTimeout(() => setCopyFeedback(""), 2000);
+    }
   };
 
   return (
@@ -849,23 +927,79 @@ function App() {
                   </div>
                 </div>
                 {activeTab.response && (
-                  <div className="flex items-center gap-2 max-w-[50%]">
-                    <input
-                      type="text"
-                      value={activeTab.saveFilename}
-                      onChange={(e) => updateActiveTab("saveFilename", e.target.value)}
-                      className="flex-1 rounded-lg border border-surface-300 bg-surface-50 px-3 py-1.5 text-sm shadow-inset"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => downloadResponse(responseTab === "pretty" ? prettyResponse : activeTab.response.body || "", activeTab.saveFilename)}
-                      className="shrink-0 rounded-lg border border-surface-300 bg-card px-4 py-1.5 text-sm font-medium text-ink-light shadow-btn hover:shadow-btn-hover hover:border-surface-400 active:shadow-btn-active"
-                    >
-                      Save
-                    </button>
+                  <div className="flex w-full flex-wrap items-center gap-2">
+                    <div className="flex min-w-[260px] flex-1 items-center gap-2">
+                      <input
+                        type="text"
+                        value={activeTab.saveFilename}
+                        onChange={(e) => updateActiveTab("saveFilename", e.target.value)}
+                        className="flex-1 rounded-lg border border-surface-300 bg-surface-50 px-3 py-1.5 text-sm shadow-inset"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => downloadResponse(getResponseTextForTab(activeTab.response, responseTab, prettyResponse), activeTab.saveFilename)}
+                        className="shrink-0 rounded-lg border border-surface-300 bg-card px-4 py-1.5 text-sm font-medium text-ink-light shadow-btn hover:shadow-btn-hover hover:border-surface-400 active:shadow-btn-active"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCopyResponse}
+                        className="shrink-0 rounded-lg border border-surface-300 bg-card px-4 py-1.5 text-sm font-medium text-ink-light shadow-btn hover:shadow-btn-hover hover:border-surface-400 active:shadow-btn-active"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    {copyFeedback && (
+                      <span className="text-xs font-medium text-ink-muted">{copyFeedback}</span>
+                    )}
                   </div>
                 )}
               </div>
+
+              {activeTab.response && responseImagePreviews.length > 0 && (
+                <div className="border-t border-surface-200 bg-surface-50 px-4 py-4">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-ink">
+                      Image Preview {responseImagePreviews.length > 1 ? `(${responseImagePreviews.length})` : ""}
+                    </p>
+                    {responseImagePreviews.length >= MAX_IMAGE_PREVIEWS && (
+                      <span className="text-xs text-ink-muted">Showing first {MAX_IMAGE_PREVIEWS}</span>
+                    )}
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {responseImagePreviews.map((image, index) => (
+                      <div key={`${image.path}-${index}`} className="overflow-hidden rounded-xl border border-surface-200 bg-card shadow-raised">
+                        <div className="flex items-center justify-between gap-2 border-b border-surface-200 px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="truncate font-mono text-[11px] text-ink-muted">{image.path}</p>
+                            <p className="text-xs text-ink-muted">
+                              {image.mimeType} • {formatBytesFromBase64(image.base64)}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const ext = extForMimeType(image.mimeType);
+                              downloadBase64Image(image.base64, `response-image-${index + 1}.${ext}`, image.mimeType);
+                            }}
+                            className="shrink-0 rounded-lg border border-surface-300 bg-card px-3 py-1.5 text-xs font-medium text-ink-light shadow-btn hover:shadow-btn-hover hover:border-surface-400 active:shadow-btn-active"
+                          >
+                            Download
+                          </button>
+                        </div>
+                        <div className="bg-surface-50 p-3">
+                          <img
+                            src={`data:${image.mimeType};base64,${image.base64}`}
+                            alt={`Response image ${index + 1}`}
+                            className="max-h-72 w-full rounded-lg border border-surface-200 bg-white object-contain"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Response Tabs */}
               <div className="border-t border-surface-200 px-4 pt-3">
@@ -1233,12 +1367,45 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function getResponseTextForTab(response, responseTab, prettyResponse) {
+  if (!response) return "";
+  if (responseTab === "headers") {
+    return JSON.stringify(response.headers || {}, null, 2);
+  }
+  if (responseTab === "pretty") {
+    return prettyResponse || "";
+  }
+  return response.body || "";
+}
+
+function formatBytesFromBase64(base64) {
+  const normalized = String(base64 || "").replace(/\s+/g, "");
+  if (!normalized) return "0 B";
+  const padding = normalized.endsWith("==") ? 2 : normalized.endsWith("=") ? 1 : 0;
+  const bytes = Math.max(0, Math.floor((normalized.length * 3) / 4) - padding);
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
 function downloadResponse(text, filename) {
   const blob = new Blob([text], { type: "application/octet-stream" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename || "response.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function downloadBase64Image(base64, filename, mimeType = "image/png") {
+  const dataUrl = `data:${mimeType};base64,${String(base64 || "").replace(/\s+/g, "")}`;
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || `response-image.${extForMimeType(mimeType)}`;
   a.click();
   URL.revokeObjectURL(url);
 }
